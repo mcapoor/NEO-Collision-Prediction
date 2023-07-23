@@ -1,0 +1,238 @@
+
+\documentclass[12pt]{article} 
+
+\usepackage[utf8]{inputenc}
+\usepackage{geometry} 
+\usepackage{graphicx} % support the \includegraphics command and options
+\usepackage[parfill]{parskip}
+\usepackage{booktabs} % for much better looking tables
+\usepackage{array} % for better arrays (eg matrices) in maths
+\usepackage{paralist} % very flexible & customisable lists (eg. enumerate/itemize, etc.)
+\usepackage{verbatim} % adds environment for commenting out blocks of text & for better verbatim
+\usepackage{subfig} % make it possible to include more than one captioned figure/table in a single float
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{seqsplit}
+
+\geometry{letterpaper}
+
+\usepackage{fancyhdr} % This should be set AFTER setting up the page geometry
+\pagestyle{fancy} % options: empty , plain , fancy
+\renewcommand{\headrulewidth}{0pt} % customise the layout...
+\lhead{}\chead{}\rhead{}
+\lfoot{}\cfoot{\thepage}\rfoot{}
+
+%%% SECTION TITLE APPEARANCE
+\usepackage{sectsty}
+\allsectionsfont{\rmfamily\mdseries\upshape} % (See the fntguide.pdf for font help)
+
+%%% ToC (table of contents) APPEARANCE
+\usepackage[nottoc,notlof,notlot]{tocbibind} % Put the bibliography in the ToC
+\usepackage[titles,subfigure]{tocloft} % Alter the style of the Table of Contents
+\renewcommand{\cftsecfont}{\rmfamily\mdseries\upshape}
+\renewcommand{\cftsecpagefont}{\rmfamily\mdseries\upshape} % No bold!
+
+%%% END Article customizations
+
+%%% The "real" document content comes below...
+\pagenumbering{arabic}
+
+\graphicspath{{./images/}}
+
+\title{Solving the Kepler Problem to evaluate NEO risk of impact with Earth}
+\author{Personal code: hsm692}
+\date{\vspace{-5ex}}
+\begin{document}
+\maketitle
+
+\section{Aim}
+To develop a model that calculates the current and future positions of Near Earth Objects in order to determine the risk of collisions with Earth. Such a project would have major implications for planetary defense and preparedness as well as for increased understanding of the evolution of the layout of bodies in our solar system -- potentially aiding astronomers in positioning and calibrating telescopes to have unobstructed views of distant targets. 
+
+\section{Introduction}
+Nothing sounds less engaging or more tedious to me than doing a stereotypical “what is the effect of…” science fair project. I want to do something challenging, complicated, and compelling. For me, that answer is rocket science -- specifically orbital mechanics. Asteroid collisions are the perfect confluence between challenge and importance -- they could pose a truly existential threat to humanity and yet the mathematics is quite literally, rocket science -- while detecting them is deeply valuable. Moreover, the scope of the project seems reasonable: the math (and the optimisation of the algorithm) is sufficiently complicated to justify a paper but not so out of reach that a high school student with no experimental resources would be unable to accomplish it. Currently, the careers I am most interested are being a Professor of Computer Science or doing something with rockets so being able to combine them here is very exciting. 
+
+\section{Background}
+Near Earth Objects (NEOs) are comets, asteroids, and other small celestial objects -- mostly composed of ice and dust -- orbiting in the area around the Earth with a perihelion distance of less than 1.3 AU. There are four classes of NEOs, defined by the shapes of their orbits, but this project shall only focus on Aten and Apollo-class NEOs as these are the two classes whose orbits cross the Earth's. Apollos, have $a > 1.0$ AU and $q = 1.017$ AU, Earth's aphelion distance. Atens have $a > 1.0$ AU and $q > 0.983$ AU, Earth's perihelion distance. Together, these groups make up roughly 68\% of known NEOs. While these objects are fairly small, their proximity to the Earth and their trajectory makes them the most likely candidates for collisions with Earth. 
+
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{Apollo-Aten.png}
+\end{center}
+
+This project aims to plot the orbits of these NEOs based on observed characteristics in order to determine their potential of impact with Earth. Knowing characteristics of their motion, namely their position and velocity and a particular time, and assuming that the Sun's gravity is the only force affecting their motion, we can predict their position after a certain time $\Delta t$. When this position coincides with the position of the Earth at that same time, it can be assumed that a collision is possible. Of course, this formulation has a number of limitations. The most egregious of these omissions is the choice to represent the motion of the NEOs as a two-body problem rather than the more accurate three-body system with the Sun and the Earth or an n-body system. Obviously, however, a solution of the three-body problem is far outside the scope of this investigation and an approximation of the orbit with classical mechanics under the influence of only a single body will have to suffice. The method to determine a new position and velocity from earlier state and time depends on a solution of Kepler's equation for mean anomaly, posed in 1609 along with his famous first two laws of planetary motion:
+$$M = n (t - T) = E - e \sin E$$
+
+\section{Experimental Design}
+\subsection{Variables}
+Using the European Space Agency's publicly available "Near-Earth Objects Coordination Centre 'Risk List' Database"\footnote{“Risk List Database.” Near-Earth Objects Coordination Centre, European Space Agency. https://neo.ssa.esa.int/risk-list } I was able to obtain eight observed orbital characteristics for thousands of Near-Earth Objects:
+\begin{itemize}
+    \item Semimajor axis, $a$
+    \item Eccentricity, $e$
+    \item Inclination, $i$
+    \item Ascending node, $\Omega$
+    \item Argument of perihelion, $\omega$
+    \item Mean anomaly, $M$
+\end{itemize}
+Using these data points, I was able to derive an iterative equation that describes the orbit of each NEO. For each successive time interval, I then compared those positions to that of the Earth at each time in order to evaluate the risk of collision.
+
+\subsection{Methodology}
+I begin by plotting the orbit of the Earth, recalculating its linear velocity and position along the orbit for every day between 1 January 2000 and 1 Jan 2122. On that starting date, the Earth's orbit had an eccentricity $e$ of 0.016709, semimajor axis length $a$ of 1 AU, and mean anomaly $M$ of 356.0470 degrees. 
+
+First, I need to transform the orbital elements into position and velocity vectors, $\vec{r}$ and $\vec{v}$, to model the problem as an instance of the Kepler Problem. I choose to first represent the orbital elements in perifocal coordinates (where the fundamental plane is the plane of the satellite's orbit with the origin in the sun) and then transform that reference plane into heliocentric coordinates via a simple rotation. Immediately, 
+$$\vec{r} = r \cos \nu \hat{P} + r \sin \nu \hat{Q}$$
+Where $\vec{r}$ is the position vector, $\nu$ is the true anomaly, $\hat{P}$ is a perifocal unit vector in the direction of periapsis, $\hat{Q}$ is the perifocal unit vector rotated 90 degrees in the direction of orbital motion, and $r$ is the magnitude of $\vec{r}$ given by 
+$$r = \frac{a(1 - e^2)}{1 + e \cos \nu}$$
+We obtain $\vec{v}$ by differentiating $\vec{r}$ to get:
+$$\vec{v} = \sqrt{\frac{\mu}{a(1- e^2)}} [(-\sin \nu) \hat{P} + (e + \cos \nu) \hat{Q}]$$
+
+\begin{center}
+    \includegraphics[width=.5\textwidth]{perifocals.png}
+\end{center}
+
+From there, transforming the reference plane to that of the ecliptic is just the common transformation via rotation matrix of the perifocal reference plane to the geocentric-equatorial plane minus 23.44 degrees to account for the inclination of the Earth's orbit. For an arbitrary vector $\vec{a}$ with components in each coordinate system, the transformation is just 
+$$\begin{bmatrix}
+    a_X\\
+    a_Y\\
+    a_Z
+\end{bmatrix} = \tilde{R} \begin{bmatrix}
+    a_P\\
+    a_Q\\
+    a_W
+\end{bmatrix}$$
+
+Where $\tilde{R}$ is obtained from the law of cosines for spherical triangles and is given by
+
+\resizebox{\linewidth}{!}{
+$\displaystyle \tilde{R} = \begin{bmatrix}
+    \cos \Omega \cos \omega - \sin \Omega \sin \omega \cos (i + 23.44) & -\cos \Omega \sin \omega - \sin \Omega \cos \omega \cos(i + 23.44) & \sin \Omega \sin (i + 23.44)\\
+    \sin \Omega \cos \omega + \cos \Omega \sin \omega \cos (i + 23.44) & -\sin \Omega \sin \omega + \cos \Omega \cos \omega \cos(i + 23.44) & -\cos \Omega \sin (i + 23.44)\\
+    \sin \omega \sin (i + 23.44) & \cos \omega \sin (i +23.44) & \cos (i +23.44)
+\end{bmatrix}$
+}
+
+I use the same $\tilde{R}$ matrix to transform $\vec{r}$ and $\vec{v}$, yielding two state vectors with which I can calculate the movement of the Earth and the NEOs. 
+
+Following the approach in the textbook \emph{Fundamentals of Astrodynamics} by Bate, Mueller, and White\footnote{Bate, Roger, Donald Mueller, \& Jerry White. \emph{Fundamentals of Astrodynamics}. Dover: 1971.
+}, I begin with the standard equations for angular momentum $h$ and mechanical energy $\varepsilon$, related to the geometrical parameters of the orbit $e$ and $a$, and the gravitational parameter $\mu = GM_\odot = 1.3271\times 10^{20} \text{ km}^3 \text{s}^{-1}$: 
+\begin{align*}
+    h &= \sqrt{\mu a(1-e^2)}\\
+    \varepsilon &= \frac{-\mu}{2a}
+\end{align*}
+
+We can combine these in an equation for the magnitude of the position $r$:
+$$r = x^2 C(x) + \frac{\vec{r}_0 \cdot \vec{v}_0}{\sqrt{\mu}} \times (1 - \frac{x^2}{a} S(x)) + r_0 (1 - \frac{x^2}{a} C(x))$$
+where $x$ is a "universal variable" defined by 
+$$\dot{x} = \frac{\sqrt{\mu}}{r}$$
+and where 
+where C and S are helper functions
+\begin{align*}
+    C(x) &:=  \sum_{k=0}^{\infty} \frac{(-\frac{x^2}{a})^k}{(2k +2)!} = \frac{1 - \cos \sqrt{\frac{x^2}{a}}}{\frac{x^2}{a}}\\
+    S(x) &:= \sum_{k=0}^{\infty} \frac{(-\frac{x^2}{a})^k}{(2k +3)!} = \frac{\sqrt{\frac{x^2}{a}} - \sin \sqrt{\frac{x^2}{a}}}{\sqrt{(\frac{x^2}{a})^3}}\\
+\end{align*}
+and where $r_0$ is the magnitude of the position vector evaluated at $x_0$ which I calculated above with the polar equation for a conic 
+$$r = \frac{a(1-e^2)}{1 + e\cos \nu}$$
+
+To solve the differential equation above for $x$, I choose to solve use Newton's numerical approximation
+$$x_{n+1} = x_n + \frac{\Delta t}{\frac{dt}{dx}\vert_{x=x_n}}$$
+for some $\Delta t = 1$ day. This method avoids the need to integrate and then separately evaluate the constant of integration. 
+
+$\frac{dt}{dx}$ can be calculated from the equation in terms of $x$ and the initial characteristics of the orbit:
+$$\sqrt{\mu} \frac{dt}{dx_n} = x_n^2 C_1 + \frac{\vec{r}_0 \cdot \vec{v}_0}{\sqrt{\mu}} x_n (1 - \frac{x_n^2}{a} S_1) + r_0 (1 - \frac{x_n^2}{a} C_1)$$
+
+Using a first approximation,
+$$x_1 = \frac{\sqrt{\mu}}{a},$$
+the iteration converges quite quickly. 
+
+All together, this gives me a value for $x$ and allows me to calculate the updated state vectors $\vec{r}$ and $\vec{v}$ from the intitial conditions $\vec{r}_0$, $\vec{v}_0$, and the universal variable $x$. Since Keplerian motion is confined to a plane, all four vectors are coplanar and any can be written as a linear combination of the others. 
+\begin{align}
+    \vec{r} &= f\, \vec{r}_0 + g\, \vec{v}_0\\
+    \vec{v} &= \dot{f}\, \vec{r}_0 + \dot{g}\, \vec{v}_0
+\end{align}
+where $f, g, \dot{f}, \dot{g}$ are time dependent scalar quantities. This assumption makes the solution much simpler but also means that the prediction algorithm will only be accurate for those objects orbiting within a single plane. I improved this approximation from needing the NEOs to orbit in the plane of the ecliptic with my earlier coordinate transformation, but this necessary assumption still limits the accuracy and usefulness of this project. In particular, the plots of orbits which vary greatly in all three dimensions will be badly distorted.
+ 
+The derivation of the values $f, g, \dot{f}, \dot{g}$ is outside the scope of this investigation but we can use their simplified forms in terms of the universal variable:
+\begin{align*}
+    f &= 1 - \frac{x^2}{r_0} C(x)\\
+    g &= t - \frac{x^3}{\sqrt{\mu}} S(x)\\
+    \dot{f} &= \frac{\sqrt{\mu}}{r_0 r} x (\frac{x^2}{a}S(x) - 1)\\
+    \dot{g} &= 1 - \frac{x^2}{r} C(x)
+\end{align*}
+Substituting them back into equations (1) and (2) above, we can at last determine the new position and velocity of the body from the initial position and elapsed time. 
+
+For each timestep, I store the new values of $\vec{r}$ and $\vec{v}$ in an array at the index corresponding to that time. By storing them in this way, I only need to calculate the movement of the Earth once to compare its position at each time with the orbits of each NEO. Here, my algorithm deviates slightly from the more common iterative approach by not using the new values of $\vec{r}$ and $\vec{v}$ as the initial states for the next step. Instead, I calculate the new positions from the first observed values at ever-increasing time intervals. My method makes the algorithm more prone to introducing errors for positions in the distant future but minimises the error propagated forward by mistakes, rounding errors, or perturbations at earlier times. Most especially, my approach helps to keep the calculations of $x$ from "exploding" into very large positive numbers or imaginary values as is possible when the orbit has a high eccentricity. 
+
+I then complete exactly the same computations for each NEO in the risk list. To get the orbital elements for each object, I implemented a webscraper using regular expressions and the BeautifulSoup Python library which takes the values from the ESA's website. All other steps are identical. 
+
+Using the observed characteristics of the NEOs (explained in section 4.1) and iterating this process for many timesteps far into the future,  comparing the value at each time with the calculated position of Earth, we can create a list of distances between a particular NEO and the Earth at every time point. The minimums of this list across every surveyed NEO then represent those bodies with the greatest collision risk.
+
+\section{Results}
+Running the program I developed, I calculated the Earth's position through 44561 epochs. Then, I repeated the process for each of 1327 NEOs within the Risk List for an average of 36500 epochs (based on the date of orbit observation). For each epoch value, I calculated the distance between the NEO position and the Earth using the vector distance formula:
+$$d = ||\vec{r}_{NEO} - \vec{r}_{Earth}||$$
+
+For each NEO, I called this the "minimum approach" value. The ten NEOs I identified having the smallest minimum approach value, and thus those that have the greatest predicted risk of impacting the Earth, are shown below along with the actual value published by the ESA:
+\begin{center}
+    \begin{tabular}{|p{2cm}||p{3cm}|p{2.75cm}|p{2.75cm}|p{2cm} |} 
+        \hline
+        \multicolumn{5}{|c|}{Near Approaches}\\
+        \hline
+        {\scriptsize NEO}  & {\scriptsize Date of min approach} & {\scriptsize Distance at minimum approach (AU)} & {\scriptsize Published minimum approach value (AU)} & {\scriptsize Percent Error}\\
+        \hline
+        2019GK21 & 2023-04-13 & 0.000462334 & 0.00267 & 82.7\%\\
+        2019UC14 & 2029-04-22 & 0.000473545 & 0.00060 & 21\%\\
+        2020SY4  & 2026-02-15 & 0.000685249 & 0.00159 & 56.9\%\\
+        2017JB2  & 2049-11-17 & 0.000768836 & 0.00181 & 57.5\%\\
+        2020SN6  & 2027-10-04 & 0.00084096  & 0.00046 & 83\%\\
+        2016BQ15 & 2043-07-24 & 0.000891271 & 0.00160 & 44.3\% \\
+        2007VJ3  & 2066-10-29 & 0.000954445 & 0.00756 & 87.4\%\\
+        2022AT1  & 2035-11-15 & 0.00103997  & 0.00431 & 75.9\%\\
+        2014HE197& 2033-08-21 & 0.001066511 & 0.02838 & 96.24\%\\ 
+        2013TP4  & 2034-02-19 & 0.001094222 & 0.00158 & 30.7\%\\
+        \hline
+    \end{tabular}
+\end{center}
+
+where my model gave the date of nearest approach and the minimum distance at that date. "Published minimum approach" came from the ESA Risk list. Percent error was calculated via the equation
+$$\delta = \left| \frac{v_{actual} - v_{predicted}}{v_{actual}}\right| \cdot 100\% $$
+
+In general, distances less than 0.05 AU classify the objects as a "potentially hazardous object." My algorithm identified a total of 288 such objects, the ten closest of whom are displayed above. A very small distance (such as my predicted value for 2019GK21 which passes within $\approx 70000$ km -- well less the distance from the Earth to the moon ) is not a guarantee of collision but a good filter for risk predictions. 
+
+Importantly, the ESA's values are calculated differently than mine; they use a value known as the "minimum intersection approach distance" ('MOID') calculated from the \emph{osculating orbits} of the two bodies. That is, their calculations also ignore perturbations upon the orbits. While my distances are found by identifying minima of the numerically-approximated distance formula, however, theirs are found algebraically at critical points of the distance formula but do not take into account the time of collision. Though the values are obtained in different ways, as neither approach takes into account perturbations or error accumulation, it still makes sense to compare the values and name a "percent error." Also notably, my method has certain advantages over that employed by the ESA: for one, my calculations provide a specific date of closest approach; additionally, I use the actual positions of the Earth and a particular body rather than just the nearest approaches of the orbits. In this way, I reduce false positives by eliminating all potential collisions where the orbits are very close but the actual bodies are on opposite sides of their orbits. The primary disadvantage of my method, however, is that numerical approximations like mine become more and more inaccurate for distant times as errors and perturbations accumulate.
+
+\section{Conclusion}
+My investigation asked "How can we predict the positions of Near Earth Objects to determine the risk of collisions with Earth?" I wanted to do a project in astrodynamics that allowed me to use both the mathematics skills I learned in my Georgia Institute of Technology Linear Algebra class and the programming skills I have developed as a hobby. Moreover, I wanted to do something useful. All of these aims I achieved.
+
+Throughout this project, I learned a staggering amount. Through a rather circuitous path, my research led me to the first part of the answer to my research question: the universal variable formulation ($x$ above) along with Stumpff functions ($C(x)$ and $S(x)$) could give me an expression for the new position and velocity after a time in terms of the original position. This was perfect for my approach of calculating intermediate time values instead of just calculating the position at a single time in the future. Next, I needed to calculate $x$. This step I struggled with for a very long time; though it should have been a simple numerical approximation following Newton's method, I kept getting very incorrect values, completing disrupting the rest of the algorithm. Eventually I discovered that I needed to use a different expression for the Stumpff functions to account for the square roots of negative values. After successfully approximating $x$, it was simple to calculate the f and g expressions and find the final velocity and position for that epoch.
+
+Of course, the universal variable formulation works only when given initial position and velocity state vectors. I, however, only had the Keplerian orbital elements for various bodies. To that end, I needed to parameterize the state vectors in terms of the observed characteristics of their orbits. The simplest way to do this was using the true anomaly (which I had to calculate from the Eccentric and Mean anomalies via approximation of Kepler's equation) and perifocal coordinates. This method, however, introduced the added difficulty of needing to transform my coordinate plane via rotation matrices to represent the problem such that the Earth and each NEO were in the same reference plane -- the sun. 
+
+In total, I calculated almost 49,000,000 different positions for various bodies. While this entire process was challenging on its own, I still was forced to simplify the problem massively. For example, I ignored all forces acting on the bodies save for the gravitational force of the sun. This approach (the 2-body representation) is very common in astrodynamics because of the chaotic behavior of more dense systems but also partially inaccurate. While I could have slightly alleviated this with numeric integration of a 3-body system or included electromagnetic or relativistic effects or other perturbations of the orbits, I found that all those approaches were beyond my ability and the scope of this project. Further, I assumed that all motion was confined to a single plane (following Kepler's approach). In reality, each object's path varies slightly over time and the plane of rotation could be at an angle from that of the Earth. My coordinate transformation effectively projected every orbit on to the plane of the ecliptic which is satisfactory for horizontal distance calculations but obscures vertical collision margins-of-error. Ultimately, I have an algorithm that provides a first-estimate of the orbits of celestial bodies but which has a number of very significant limitations contributing to the exceptionally large margin of error in its predictions. The huge variance in error between the data points presented above comes from the extreme susceptibility of NEO movements to perturbations -- even small effects from any of the forces I excluded from the model can lead to major changes over time. To that end, this project can not be called a complete success though it absolutely taught me a great deal and my research did lead me to the most common way scientists calculate osculating trajectories. In its current state, my model would serve 
+very well as the engine for a physics simulator or video game but not for direct applications to planetary defence. 
+
+Future projects in this field should take care to work in a 3-dimensional reference frame instead of the 2-dimensional plane that Kepler and I favoured. These future extensions should also implement further refinement by inclusion of other forces or perhaps could improve the accuracy of orbit determination via a solution of the Gauss and Lambert problems, fitting the orbital curve to multiple points of observation. Finally, I would recommend an element of increased simulation, perhaps via Monte-Carlo method, to account for the propagation of errors through the calculations and to account for perturbations across the orbit and variations in initial conditions for each body instead of making one single prediction pass. Were I to implement these solutions, my predictions would be far more accurate and the current abysmal calculated percent error would likely be minimised.
+
+\section{Works Cited}
+
+“Basic of Space Flight: Planet Positions,” www.braeunig.us/space/plntpos.htm.
+
+Bate, Roger, Donald Mueller, \& Jerry White. \emph{Fundamentals of Astrodynamics}. Dover: 1971.
+
+Curtis, Howard D. \emph{Orbital Mechanics for Engineering Students: Revised Fourth Edition.} Elsevier, 2021.
+
+“How to Compute Planetary Positions.” Computing Planetary Positions, stjarnhimlen.se/comp/ppcomp.html.
+
+Tatum, Jeremy. \emph{Celestial Mechanics}. “10.7: Calculating the Position of a Comet or Asteroid.” University of Victoria, Libretexts. 30 Dec. 2020.
+
+“Orbital Elements.” Wikipedia, Wikimedia Foundation. 30 Sept. 2021,\\ 
+en.wikipedia.org/wiki/Orbital\_elements.
+
+“Perifocal Coordinate System.” Wikipedia, Wikimedia Foundation, 11 June 2020, en.wikipedia.org/wiki/Perifocal\_coordinate\_system.
+Wagner, Sam, et al. “Computational Solutions to Lambert’s Problem on Modern Graphics Processing Units.” Journal of Guidance, Control, and Dynamics, vol. 38, no. 7, 2015, pp. 1305–1311., doi:10.2514/1.g000840.
+
+“Risk List Database.” Near-Earth Objects Coordination Centre, European Space Agency. https://neo.ssa.esa.int/risk-list 
+
+
+
+
+
+\end{document}
+
